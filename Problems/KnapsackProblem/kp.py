@@ -23,6 +23,7 @@ class KnapsackProblem(RKOEnvAbstract):
 
         # --- Set required attributes from the abstract class ---
         self.tam_solution = self.n_items
+        self.save_q_learning_report = False
         
         self.BRKGA_parameters = {
             'p': [100, 50],          
@@ -124,10 +125,13 @@ class KnapsackProblem(RKOEnvAbstract):
         return -total_profit
     
     
-if __name__ == "__main__":
+from LogStrategy import FileLogger
 
+if __name__ == "__main__":
+    
     env = KnapsackProblem(os.path.join(current_directory,'kp50.txt'))
-    solver = RKO(env, True)
+    logger = FileLogger(os.path.join(current_directory,'results.txt'), reset=True)
+    solver = RKO(env, logger=logger)
     solver.solve(time_total=60, brkga=1, lns=1, vns=1, ils=1, sa=1, pso=0, ga=0)
     
     
