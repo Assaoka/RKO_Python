@@ -7,6 +7,8 @@ project_root_directory = os.path.dirname(parent_directory)
 sys.path.append(project_root_directory)
 from RKO import RKO
 from Environment import RKOEnvAbstract
+from LogStrategy import FileLogger
+from Plots import HistoryPlotter
 
 class KnapsackProblem(RKOEnvAbstract):
     """
@@ -123,13 +125,9 @@ class KnapsackProblem(RKOEnvAbstract):
         # The RKO framework assumes a minimization problem by default,
         # so we return the negative of the profit.
         return -total_profit
-    
-    
-from LogStrategy import FileLogger
 
 if __name__ == "__main__":
-    
     env = KnapsackProblem(os.path.join(current_directory,'kp50.txt'))
     logger = FileLogger(os.path.join(current_directory,'results.txt'), reset=True)
     solver = RKO(env, logger=logger)
-    solver.solve(time_total=30, brkga=1, lns=1, vns=1, ils=1, sa=1, pso=1, ga=1)
+    solver.solve(time_total=30, brkga=1, lns=1, vns=1, ils=1, sa=1, pso=1, ga=1, runs=2)
