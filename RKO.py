@@ -56,15 +56,15 @@ class SolutionPool:
             if fitness < self.best_pair[0]:
                 self.best_pair[0] = fitness
                 self.best_pair[1] = list(keys)
-                self.best_pair[2] = round(self.start_time - time.time(), 2)
+                self.best_pair[2] = round(time.time() - self.start_time, 2)
 
                 if self.logger:
                     if self.best_possible is not None:
-                        self.logger.log(f"\n{metaheuristic_name} NEW BEST: {fitness} - BEST: {self.best_possible} - "
-                              f"Time: {round(self.start_time - time.time(), 2)}s - {len(self.pool)}")
+                        self.logger.log(f"{metaheuristic_name} NEW BEST: {fitness} - BEST: {self.best_possible} - "
+                              f"Time: {round(time.time() - self.start_time, 2)}s - {len(self.pool)}")
                     else:
-                        self.logger.log(f"\n{metaheuristic_name} NEW BEST: {fitness} - "
-                              f"Time: {round(self.start_time - time.time(), 2)}s - {len(self.pool)}")
+                        self.logger.log(f"{metaheuristic_name} NEW BEST: {fitness} - "
+                              f"Time: {round(time.time() - self.start_time, 2)}s - {len(self.pool)}")
 
             bisect.insort(self.pool, entry_tuple)
 
@@ -1419,7 +1419,7 @@ class RKO:
 
                 solutions.append(solution)
                 costs.append(round(cost, 2))
-                times.append(round(-1 * time_elapsed, 2))
+                times.append(round(time_elapsed, 2))
                 
             if self.logger:
                 summary = f'{time_total}, {self.env.instance_name}, {round(sum(costs)/len(costs),2)}, {costs}, {round(sum(times)/len(times),2)}, {times}'

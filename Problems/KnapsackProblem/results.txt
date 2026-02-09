@@ -1,53 +1,28 @@
---- Log Iniciado em 2026-02-08 23:20:14.496885 ---
+--- Log Iniciado em 2026-02-08 23:30:27.760210 ---
 Instance: c:\Users\joaov\Github\RKO_Python\Problems\KnapsackProblem\kp50.txt, Run: 1/1
-
-pool NEW BEST: 499874 - Time: -0.01s - 0
-
-pool NEW BEST: -104 - Time: -0.01s - 1
-
-pool NEW BEST: -114 - Time: -0.03s - 4
-
-pool NEW BEST: -118 - Time: -0.07s - 10
-
-pool NEW BEST: -121 - Time: -0.12s - 19
-
-BRKGA 0 NEW BEST: -123 - Time: -1.06s - 20
-
-BRKGA 0 NEW BEST: -124 - Time: -1.07s - 20
-
-SA 1 NEW BEST: -125 - Time: -1.09s - 20
-
-SA 1 NEW BEST: -126 - Time: -1.09s - 20
-
-SA 1 NEW BEST: -128 - Time: -1.1s - 20
-
-SA 1 NEW BEST: -129 - Time: -1.11s - 20
-
-SA 1 NEW BEST: -130 - Time: -1.11s - 20
-
-SA 1 NEW BEST: -132 - Time: -1.11s - 20
-
-SA 1 NEW BEST: -135 - Time: -1.12s - 20
-
-SA 1 NEW BEST: -136 - Time: -1.14s - 20
-
-SA 1 NEW BEST: -137 - Time: -1.17s - 20
-
-SA 1 NEW BEST: -138 - Time: -1.18s - 20
-
-SA 1 NEW BEST: -141 - Time: -1.22s - 20
-
-SA 1 NEW BEST: -143 - Time: -1.26s - 20
-
-SA 1 NEW BEST: -145 - Time: -1.31s - 20
-
-ILS 3 NEW BEST: -146 - Time: -1.71s - 20
-
-ILS 3 NEW BEST: -147 - Time: -1.85s - 20
-
-ILS 3 NEW BEST: -148 - Time: -2.38s - 20
-
-VNS 2 NEW BEST: -149 - Time: -44.89s - 20
-Process 12200 timed out and will be terminated.
-Process 13380 timed out and will be terminated.
-60, c:\Users\joaov\Github\RKO_Python\Problems\KnapsackProblem\kp50.txt, -149.0, [-149], 44.89, [44.89]
+pool NEW BEST: 1299880 - Time: 0.01s - 0
+pool NEW BEST: -102 - Time: 0.02s - 1
+pool NEW BEST: -107 - Time: 0.04s - 6
+pool NEW BEST: -111 - Time: 0.09s - 14
+BRKGA 0 NEW BEST: -112 - Time: 0.96s - 20
+BRKGA 0 NEW BEST: -126 - Time: 0.96s - 20
+SA 1 NEW BEST: -127 - Time: 1.09s - 20
+SA 1 NEW BEST: -128 - Time: 1.1s - 20
+SA 1 NEW BEST: -129 - Time: 1.11s - 20
+SA 1 NEW BEST: -134 - Time: 1.12s - 20
+SA 1 NEW BEST: -135 - Time: 1.12s - 20
+SA 1 NEW BEST: -137 - Time: 1.13s - 20
+SA 1 NEW BEST: -139 - Time: 1.14s - 20
+SA 1 NEW BEST: -140 - Time: 1.19s - 20
+SA 1 NEW BEST: -141 - Time: 1.23s - 20
+SA 1 NEW BEST: -142 - Time: 1.26s - 20
+SA 1 NEW BEST: -145 - Time: 1.26s - 20
+SA 1 NEW BEST: -146 - Time: 1.28s - 20
+VNS 2 NEW BEST: -147 - Time: 1.38s - 20
+ILS 3 NEW BEST: -148 - Time: 1.91s - 20
+LNS 4 NEW BEST: -149 - Time: 19.06s - 20
+Process 22112 timed out and will be terminated.
+Process 19404 timed out and will be terminated.
+Process 15732 timed out and will be terminated.
+Process 12292 timed out and will be terminated.
+30, c:\Users\joaov\Github\RKO_Python\Problems\KnapsackProblem\kp50.txt, -149.0, [-149], 19.05, [19.05]

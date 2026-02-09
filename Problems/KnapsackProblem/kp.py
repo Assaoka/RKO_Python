@@ -18,7 +18,7 @@ class KnapsackProblem(RKOEnvAbstract):
 
         self.instance_name = instance_path.split('/')[-1]
         self.LS_type: str = 'Best' # Options: 'Best' or 'First'
-        self.dict_best: dict = {}
+        self.dict_best: dict = {"Best": [149]}
         self._load_data(instance_path)
 
         # --- Set required attributes from the abstract class ---
@@ -132,6 +132,4 @@ if __name__ == "__main__":
     env = KnapsackProblem(os.path.join(current_directory,'kp50.txt'))
     logger = FileLogger(os.path.join(current_directory,'results.txt'), reset=True)
     solver = RKO(env, logger=logger)
-    solver.solve(time_total=60, brkga=1, lns=1, vns=1, ils=1, sa=1, pso=0, ga=0)
-    
-    
+    solver.solve(time_total=30, brkga=1, lns=1, vns=1, ils=1, sa=1, pso=1, ga=1)
