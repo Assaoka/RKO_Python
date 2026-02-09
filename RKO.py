@@ -10,13 +10,15 @@ import bisect
 import itertools
 from multiprocessing import Manager, Process, cpu_count
 
+from LogStrategy import LogStrategy, TerminalLogger, ParallelLogManager
+
 
 class SolutionPool:
     """
     Manages a pool of candidate solutions and keeps track of the best solution found.
     """
 
-    def __init__(self, size, pool, best_pair, lock=None, print=False, Best=None, env=None):
+    def __init__(self, size, pool, best_pair, lock=None, logger: LogStrategy = None, Best=None, env=None):
         """
         Initializes the solution pool.
 
@@ -25,7 +27,7 @@ class SolutionPool:
             pool (list): List to store solutions with their fitness values.
             best_pair (list): Tracks the best solution [fitness, keys, elapsed_time].
             lock (Lock, optional): Multiprocessing lock for safe concurrent access.
-            print (bool): Whether to print updates when a new best solution is found.
+            logger (LogStrategy, optional): Logger for printing updates.
             Best (float, optional): Known best possible solution (if available).
             env (object, optional): Reference to the environment.
         """
@@ -34,7 +36,7 @@ class SolutionPool:
         self.best_pair = best_pair
         self.lock = lock
         self.start_time = time.time()
-        self.print = print
+        self.logger = logger
         self.best_possible = Best
         self.env = env
 
@@ -54,15 +56,15 @@ class SolutionPool:
             if fitness < self.best_pair[0]:
                 self.best_pair[0] = fitness
                 self.best_pair[1] = list(keys)
-                self.best_pair[2] = round(self.start_time - time.time(), 2)
+                self.best_pair[2] = round(time.time() - self.start_time, 2)
 
-                if self.print:
+                if self.logger:
                     if self.best_possible is not None:
-                        print(f"\n{metaheuristic_name} NEW BEST: {fitness} - BEST: {self.best_possible} - "
-                              f"Time: {round(self.start_time - time.time(), 2)}s - {len(self.pool)}")
+                        self.logger.log(f"{metaheuristic_name} NEW BEST: {fitness} - BEST: {self.best_possible} - "
+                              f"Time: {round(time.time() - self.start_time, 2)}s - {len(self.pool)}")
                     else:
-                        print(f"\n{metaheuristic_name} NEW BEST: {fitness} - "
-                              f"Time: {round(self.start_time - time.time(), 2)}s - {len(self.pool)}")
+                        self.logger.log(f"{metaheuristic_name} NEW BEST: {fitness} - "
+                              f"Time: {round(time.time() - self.start_time, 2)}s - {len(self.pool)}")
 
             bisect.insort(self.pool, entry_tuple)
 
@@ -74,14 +76,13 @@ class RKO:
     Implements the Random-Key Optimizer (RKO) framework integrating multiple metaheuristics.
     """
 
-    def __init__(self, env, print_best=False, save_directory=None):
+    def __init__(self, env, logger: LogStrategy | None = None):
         """
         Initializes the RKO optimizer.
 
         Args:
             env (object): Problem environment, must provide solution size, local search type, and max execution time.
-            print_best (bool): Whether to print updates when a new best solution is found.
-            save_directory (str, optional): Directory path to save reports or logs.
+            logger (LogStrategy | None): Logger strategy to use.
         """
         self.env = env
         self.__MAX_KEYS = self.env.tam_solution
@@ -89,8 +90,7 @@ class RKO:
         self.start_time = time.time()
         self.max_time = self.env.max_time
         self.rate = 1
-        self.print_best = print_best
-        self.save_directory = save_directory
+        self.logger = logger
         self.q_managers = {}
 
     def _setup_parameters(self, metaheuristic_name, params_config):
@@ -1257,19 +1257,20 @@ class RKO:
             bool: True if the search should stop, False otherwise.
         """
         if time.time() - self.start_time > self.max_time:
-            if self.print_best and tag != -1:
-                print(f"{metaheuristic_name}: FINISHED")
+            if self.logger and tag != -1:
+                self.logger.log(f"{metaheuristic_name}: FINISHED")
             return True
         
         if pool is not None and self.env.dict_best is not None and self.env.instance_name in self.env.dict_best:
             if pool.best_pair[0] == self.env.dict_best[self.env.instance_name]:
-                print(f"Best known solution found: {pool.best_pair[0]}")
+                if self.logger:
+                    self.logger.log(f"Best known solution found: {pool.best_pair[0]}")
                 return True
 
         if self.env.dict_best is not None and self.env.instance_name in self.env.dict_best:
             if best_cost == self.env.dict_best[self.env.instance_name]:
-                if self.print_best and tag != -1:
-                    print(f"Metaheuristic {metaheuristic_name} found the best solution: {best_cost}")
+                if self.logger:
+                    self.logger.log(f"Metaheuristic {metaheuristic_name} found the best solution: {best_cost}")
                 return True
         return False
 
@@ -1296,161 +1297,175 @@ class RKO:
         solutions = []
         times = []
         costs = []
-        for i in range(runs):
-            print(f'Instance: {self.env.instance_name}, Run: {i+1}/{runs}')
-            limit_time = time_total * restart
-            restarts = int(1 / restart)
-            self.max_time = limit_time
 
-            manager = Manager()
-            shared = manager.Namespace()
-            shared.best_pair = manager.list([float('inf'), None, None])
-            shared.best_pool = manager.list()
-            shared.pool = SolutionPool(20, shared.best_pool, shared.best_pair, lock=manager.Lock(), print=self.print_best, Best=self.env.dict_best.get(self.env.instance_name), env=self.env)
-            
-            for _ in range(20):
-                keys = self.random_keys()
-                cost = self.env.cost(self.env.decoder(keys))
-                shared.pool.insert((cost, list(keys)), 'pool', -1)
+        # Configurar o Logger Paralelo
+        log_manager = None
+        worker_logger = None
+        if self.logger:
+             log_manager = ParallelLogManager(self.logger)
+             log_manager.start()
+             worker_logger = log_manager.get_logger()
 
-            processes = []
-            for k in range(restarts):
-                tag = 0
-                self.start_time = time.time()
-                if self.stop_condition(shared.pool.best_pair[0], 'RKO', tag, pool=shared.pool):
-                    break
+        try:
+            for i in range(runs):
+                if self.logger:
+                    self.logger.log(f'Instance: {self.env.instance_name}, Run: {i+1}/{runs}')
+                limit_time = time_total * restart
+                restarts = int(1 / restart)
+                self.max_time = limit_time
 
-
-                shared.pool.pool = manager.list()
-                for _ in range(brkga):
-                    p = Process(
-                        target=_brkga_worker,
-                        args=(self.env, shared.pool,tag, self.print_best, self.save_directory)
-                    )
-                    tag += 1
-                    processes.append(p)
-                    p.start()
-                for _ in range(ms):
-                    p = Process(
-                        target=_MS_worker,
-                        args=(self.env, shared.pool,tag, self.print_best, self.save_directory)
-                    )
-                    tag += 1
-                    processes.append(p)
-                    p.start()
-                for _ in range(sa):
-                    p = Process(
-                        target=_SA_worker,
-                        args=(self.env,  shared.pool,tag, self.print_best, self.save_directory)
-                    )
-                    tag += 1
-                    processes.append(p)
-                    p.start()
-                for _ in range(vns):
-                    p = Process(
-                        target=_VNS_worker,
-                        args=(self.env, self.max_time, shared.pool,tag, self.print_best, self.save_directory)
-                    )
-                    tag += 1
-                    processes.append(p)
-                    p.start()
-                for _ in range(ils):
-                    p = Process(
-                        target=_ILS_worker,
-                        args=(self.env, self.max_time, shared.pool,tag, self.print_best, self.save_directory)
-                    )
-                    tag += 1
-                    processes.append(p)
-                    p.start()
-                    
-                for _ in range(lns):
-                    p = Process(
-                        target=_LNS_worker,
-                        args=(self.env, self.max_time, shared.pool,tag, self.print_best, self.save_directory)
-                    )
-                    tag += 1
-                    processes.append(p)
-                    p.start()
-                    
-                for _ in range(pso):
-                    p = Process(
-                        target=_PSO_worker,
-                        args=(self.env, shared.pool , tag, self.print_best, self.save_directory)
-                    )
-                    tag += 1
-                    processes.append(p)
-                    p.start()
-                    
-                for _ in range(ga):
-                    p = Process(
-                        target=_GA_worker,
-                        args=(self.env, shared.pool , tag, self.print_best, self.save_directory)
-                    )
-                    tag += 1
-                    processes.append(p)
-                    p.start()
-
-                for p in processes:
-                    p.join(timeout=self.max_time)
+                manager = Manager()
+                shared = manager.Namespace()
+                shared.best_pair = manager.list([float('inf'), None, None])
+                shared.best_pool = manager.list()
                 
-                for p in processes:
-                    if p.is_alive():
-                        print(f"Process {p.pid} timed out and will be terminated.")
-                        p.terminate()
+                # Usar worker_logger no SolutionPool
+                shared.pool = SolutionPool(20, shared.best_pool, shared.best_pair, lock=manager.Lock(), logger=worker_logger, Best=self.env.dict_best.get(self.env.instance_name), env=self.env)
+                
+                for _ in range(20):
+                    keys = self.random_keys()
+                    cost = self.env.cost(self.env.decoder(keys))
+                    shared.pool.insert((cost, list(keys)), 'pool', -1)
 
-            cost = shared.pool.best_pair[0]
-            solution = shared.pool.best_pair[1]
-            time_elapsed = shared.pool.best_pair[2]
+                processes = []
+                for k in range(restarts):
+                    tag = 0
+                    self.start_time = time.time()
+                    if self.stop_condition(shared.pool.best_pair[0], 'RKO', tag, pool=shared.pool):
+                        break
 
-            solutions.append(solution)
-            costs.append(round(cost, 2))
-            times.append(round(-1 * time_elapsed, 2))
-            
-            
-        if self.save_directory is not None:
-            directory = os.path.dirname(self.save_directory)
-            if directory:
-                os.makedirs(directory, exist_ok=True)
-            with open(self.save_directory, 'a', newline='') as f:
-                f.write(f'{time_total}, {self.env.instance_name}, {round(sum(costs)/len(costs),2)}, {costs}, {round(sum(times)/len(times),2)}, {times}\n')
 
-        return cost, solution, time_elapsed
+                    shared.pool.pool = manager.list()
+                    for _ in range(brkga):
+                        p = Process(
+                            target=_brkga_worker,
+                            args=(self.env, shared.pool, tag, worker_logger)
+                        )
+                        tag += 1
+                        processes.append(p)
+                        p.start()
+                    for _ in range(ms):
+                        p = Process(
+                            target=_MS_worker,
+                            args=(self.env, shared.pool, tag, worker_logger)
+                        )
+                        tag += 1
+                        processes.append(p)
+                        p.start()
+                    for _ in range(sa):
+                        p = Process(
+                            target=_SA_worker,
+                            args=(self.env,  shared.pool, tag, worker_logger)
+                        )
+                        tag += 1
+                        processes.append(p)
+                        p.start()
+                    for _ in range(vns):
+                        p = Process(
+                            target=_VNS_worker,
+                            args=(self.env, self.max_time, shared.pool, tag, worker_logger)
+                        )
+                        tag += 1
+                        processes.append(p)
+                        p.start()
+                    for _ in range(ils):
+                        p = Process(
+                            target=_ILS_worker,
+                            args=(self.env, self.max_time, shared.pool, tag, worker_logger)
+                        )
+                        tag += 1
+                        processes.append(p)
+                        p.start()
+                        
+                    for _ in range(lns):
+                        p = Process(
+                            target=_LNS_worker,
+                            args=(self.env, self.max_time, shared.pool, tag, worker_logger)
+                        )
+                        tag += 1
+                        processes.append(p)
+                        p.start()
+                        
+                    for _ in range(pso):
+                        p = Process(
+                            target=_PSO_worker,
+                            args=(self.env, shared.pool , tag, worker_logger)
+                        )
+                        tag += 1
+                        processes.append(p)
+                        p.start()
+                        
+                    for _ in range(ga):
+                        p = Process(
+                            target=_GA_worker,
+                            args=(self.env, shared.pool , tag, worker_logger)
+                        )
+                        tag += 1
+                        processes.append(p)
+                        p.start()
 
-def _brkga_worker(env, pool,tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
+                    for p in processes:
+                        p.join(timeout=self.max_time)
+                    
+                    for p in processes:
+                        if p.is_alive():
+                            if self.logger:
+                                self.logger.log(f"Process {p.pid} timed out and will be terminated.")
+                            p.terminate()
+
+                cost = shared.pool.best_pair[0]
+                solution = shared.pool.best_pair[1]
+                time_elapsed = shared.pool.best_pair[2]
+
+                solutions.append(solution)
+                costs.append(round(cost, 2))
+                times.append(round(time_elapsed, 2))
+                
+            if self.logger:
+                summary = f'{time_total}, {self.env.instance_name}, {round(sum(costs)/len(costs),2)}, {costs}, {round(sum(times)/len(times),2)}, {times}'
+                self.logger.log(summary)
+
+            return cost, solution, time_elapsed
+
+        finally:
+            if log_manager:
+                log_manager.stop()
+
+def _brkga_worker(env, pool, tag, logger):
+    runner = RKO(env, logger)
     _, local_keys, local_best = runner.BRKGA(tag, pool)
     
-def _MS_worker(env, pool,tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
+def _MS_worker(env, pool, tag, logger):
+    runner = RKO(env, logger)
     _, local_keys, local_best = runner.MultiStart(tag, pool)
     
-def _GRASP_worker(env, pool,tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
+def _GRASP_worker(env, pool, tag, logger):
+    runner = RKO(env, logger)
     _, local_keys, local_best = runner.MultiStart(pool)
     
-def _VNS_worker(env, limit_time, pool, tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
-    _, local_keys, local_best = runner.VNS(limit_time,tag, pool)
+def _VNS_worker(env, limit_time, pool, tag, logger):
+    runner = RKO(env, logger)
+    _, local_keys, local_best = runner.VNS(limit_time, tag, pool)
     
-def _ILS_worker(env, limit_time,  pool, tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
-    _, local_keys, local_best = runner.ILS(limit_time,tag, pool)
+def _ILS_worker(env, limit_time,  pool, tag, logger):
+    runner = RKO(env, logger)
+    _, local_keys, local_best = runner.ILS(limit_time, tag, pool)
     
-def _SA_worker(env, pool,tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
-    _, local_keys, local_best = runner.SimulatedAnnealing(tag = tag, pool = pool)
+def _SA_worker(env, pool, tag, logger):
+    runner = RKO(env, logger)
+    _, local_keys, local_best = runner.SimulatedAnnealing(tag=tag, pool=pool)
     
-def _LNS_worker(env, limit_time, pool, tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
-    _, local_keys, local_best = runner.LNS(limit_time=limit_time, tag = tag, pool = pool)
+def _LNS_worker(env, limit_time, pool, tag, logger):
+    runner = RKO(env, logger)
+    _, local_keys, local_best = runner.LNS(limit_time=limit_time, tag=tag, pool=pool)
     
-def _PSO_worker(env, pool, tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
-    _, local_keys, local_best = runner.PSO(tag = tag, pool = pool)
+def _PSO_worker(env, pool, tag, logger):
+    runner = RKO(env, logger)
+    _, local_keys, local_best = runner.PSO(tag=tag, pool=pool)
     
-def _GA_worker(env, pool, tag, print_best, save_directory):
-    runner = RKO(env, print_best, save_directory)
-    _, local_keys, local_best = runner.GA(tag = tag, pool = pool)
+def _GA_worker(env, pool, tag, logger):
+    runner = RKO(env, logger)
+    _, local_keys, local_best = runner.GA(tag=tag, pool=pool)
 
 
 class QLearningManager:
@@ -1601,6 +1616,8 @@ class QLearningManager:
         try:
             df = pd.DataFrame(report_data).sort_values(by='state_id').set_index('state_id')
             df.to_csv(filepath)
-            print(f"Q-Learning convergence report saved to: {filepath}")
+            if self.logger:
+                self.logger.log(f"Q-Learning convergence report saved to: {filepath}")
         except Exception as e:
-            print(f"Error saving convergence report to {filepath}: {e}")
+            if self.logger:
+                self.logger.log(f"Error saving convergence report to {filepath}: {e}")

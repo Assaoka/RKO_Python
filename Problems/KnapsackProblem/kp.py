@@ -7,6 +7,8 @@ project_root_directory = os.path.dirname(parent_directory)
 sys.path.append(project_root_directory)
 from RKO import RKO
 from Environment import RKOEnvAbstract
+from LogStrategy import FileLogger
+from Plots import HistoryPlotter
 
 class KnapsackProblem(RKOEnvAbstract):
     """
@@ -18,11 +20,12 @@ class KnapsackProblem(RKOEnvAbstract):
 
         self.instance_name = instance_path.split('/')[-1]
         self.LS_type: str = 'Best' # Options: 'Best' or 'First'
-        self.dict_best: dict = {}
+        self.dict_best: dict = {"Best": [149]}
         self._load_data(instance_path)
 
         # --- Set required attributes from the abstract class ---
         self.tam_solution = self.n_items
+        self.save_q_learning_report = False
         
         self.BRKGA_parameters = {
             'p': [100, 50],          
@@ -122,12 +125,12 @@ class KnapsackProblem(RKOEnvAbstract):
         # The RKO framework assumes a minimization problem by default,
         # so we return the negative of the profit.
         return -total_profit
-    
-    
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     env = KnapsackProblem(os.path.join(current_directory,'kp50.txt'))
-    solver = RKO(env, True)
-    solver.solve(time_total=60, brkga=1, lns=1, vns=1, ils=1, sa=1, pso=0, ga=0)
+    logger = FileLogger(os.path.join(current_directory,'results.txt'), reset=True)
+    solver = RKO(env, logger=logger)
+    solver.solve(time_total=30, brkga=1, lns=1, vns=1, ils=1, sa=1, pso=1, ga=1, runs=2)
     
-    
+    # Plot convergence for the first run
+    HistoryPlotter.plot_convergence(os.path.join(current_directory, 'results.txt'), run_number=1).show()
