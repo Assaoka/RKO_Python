@@ -127,4 +127,6 @@ By following this structure, you can adapt the RKO framework to a wide variety o
 ### Maintainers
 Felipe Silvestre Cardoso Roberto - [Linkedin](https://www.linkedin.com/in/felipesilvestrecr/)
 
+João Victor Assaoka Ribeiro - [Linkedin](https://www.linkedin.com/in/assaoka/)
+
 For any questions regarding the framework, bug reports, or collaboration inquiries, please feel free to contact me on LinkedIn. I welcome any feedback or suggestions for improvement.
