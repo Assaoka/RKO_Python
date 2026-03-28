@@ -2,7 +2,6 @@ import numpy as np
 import os
 import sys
 
-# Standard import assumed after package installation
 from rko import RKO, RKOEnvAbstract, FileLogger, HistoryPlotter
 
 class KnapsackProblem(RKOEnvAbstract):
